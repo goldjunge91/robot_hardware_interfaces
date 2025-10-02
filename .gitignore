@@ -1,1 +1,77 @@
 .vscode
+build/*
+install/*
+log/*
+build
+log
+install
+site/*
+.pytest_cache
+/__pycache__/
+/__pycache__/*
+.docs/ROS2_Humble_docs/
+.env
+/.env
+/.env.*
+.env
+uros_ws
+*.log
+build_release
+*.db
+*.sqlite3
+build
+build_release
+build_debug
+debug
+release
+debug/*
+release/*
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Ignore Mac system files
+.DS_store
+.DS_Store
+@eaDir
+
+# Ignore node_modules folder
+node_modules
+
+# Ignore files related to API keys
+*.env
+
+build
+.cproject
+.project
+.pydevproject
+.settings
