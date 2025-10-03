@@ -1,0 +1,17 @@
+<library path="robot_hardware_interfaces">
+  <class name="robot_hardware_interfaces/RobotSystem"
+         type="robot_hardware_interfaces::RobotSystem"
+         base_class_type="hardware_interface::SystemInterface">
+    <description>
+      Hardware system controller for Robot
+    </description>
+  </class>
+
+  <class name="robot_hardware_interfaces/RobotImuSensor"
+         type="robot_hardware_interfaces::RobotImuSensor"
+          base_class_type="hardware_interface::SensorInterface">
+    <description>
+      IMU sensor broadcaster for Robot
+    </description>
+  </class>
+</library>

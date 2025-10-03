@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(rosbot_hardware_interfaces)
+project(robot_hardware_interfaces)
 
 # Default to C++14
 if(NOT CMAKE_CXX_STANDARD)
@@ -23,8 +23,8 @@ find_package(realtime_tools REQUIRED)
 add_library(
   ${PROJECT_NAME}
   SHARED
-  src/rosbot_system.cpp
-  src/rosbot_imu_sensor.cpp
+  src/robot_system.cpp
+  src/robot_imu_sensor.cpp
 )
 target_include_directories(
   ${PROJECT_NAME}
@@ -43,10 +43,10 @@ ament_target_dependencies(
   std_msgs
 )
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE "ROSBOT_HARDWARE_INTERFACES_BUILDING_DLL")
+target_compile_definitions(${PROJECT_NAME} PRIVATE "ROBOT_HARDWARE_INTERFACES_BUILDING_DLL")
 
 # target_compile_definitions(${PROJECT_NAME} PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS"s)
-pluginlib_export_plugin_description_file(hardware_interface rosbot_hardware_interfaces.xml)
+pluginlib_export_plugin_description_file(hardware_interface robot_hardware_interfaces.xml)
 
 install(
   DIRECTORY include/

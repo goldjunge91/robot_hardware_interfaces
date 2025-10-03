@@ -1,7 +1,7 @@
-#ifndef ROSBOT_HARDWARE_INTERFACES__ROSBOT_IMU_SENSOR_HPP_
-#define ROSBOT_HARDWARE_INTERFACES__ROSBOT_IMU_SENSOR_HPP_
+#ifndef ROBOT_HARDWARE_INTERFACES__ROBOT_IMU_SENSOR_HPP_
+#define ROBOT_HARDWARE_INTERFACES__ROBOT_IMU_SENSOR_HPP_
 
-#include "rosbot_hardware_interfaces/visibility_control.hpp"
+#include "robot_hardware_interfaces/visibility_control.hpp"
 
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 #include "rclcpp_lifecycle/state.hpp"
@@ -17,7 +17,7 @@
 
 #include "sensor_msgs/msg/imu.hpp"
 
-namespace rosbot_hardware_interfaces
+namespace robot_hardware_interfaces
 {
 using return_type = hardware_interface::return_type;
 using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
@@ -26,36 +26,36 @@ using CommandInterface = hardware_interface::CommandInterface;
 
 using Imu = sensor_msgs::msg::Imu;
 
-class RosbotImuSensor : public hardware_interface::SensorInterface
+class RobotImuSensor : public hardware_interface::SensorInterface
 {
 public:
-  RCLCPP_SHARED_PTR_DEFINITIONS(RosbotImuSensor)
+  RCLCPP_SHARED_PTR_DEFINITIONS(RobotImuSensor)
 
-  ROSBOT_HARDWARE_INTERFACES_PUBLIC
+  ROBOT_HARDWARE_INTERFACES_PUBLIC
   CallbackReturn on_init(const hardware_interface::HardwareInfo & hardware_info) override;
 
-  ROSBOT_HARDWARE_INTERFACES_PUBLIC
+  ROBOT_HARDWARE_INTERFACES_PUBLIC
   CallbackReturn on_configure(const rclcpp_lifecycle::State & previous_state) override;
 
-  ROSBOT_HARDWARE_INTERFACES_PUBLIC
+  ROBOT_HARDWARE_INTERFACES_PUBLIC
   CallbackReturn on_cleanup(const rclcpp_lifecycle::State & previous_state) override;
 
-  ROSBOT_HARDWARE_INTERFACES_PUBLIC
+  ROBOT_HARDWARE_INTERFACES_PUBLIC
   CallbackReturn on_activate(const rclcpp_lifecycle::State & previous_state) override;
 
-  ROSBOT_HARDWARE_INTERFACES_PUBLIC
+  ROBOT_HARDWARE_INTERFACES_PUBLIC
   CallbackReturn on_deactivate(const rclcpp_lifecycle::State & previous_state) override;
 
-  ROSBOT_HARDWARE_INTERFACES_PUBLIC
+  ROBOT_HARDWARE_INTERFACES_PUBLIC
   CallbackReturn on_shutdown(const rclcpp_lifecycle::State & previous_state) override;
 
-  ROSBOT_HARDWARE_INTERFACES_PUBLIC
+  ROBOT_HARDWARE_INTERFACES_PUBLIC
   CallbackReturn on_error(const rclcpp_lifecycle::State & previous_state) override;
 
-  ROSBOT_HARDWARE_INTERFACES_PUBLIC
+  ROBOT_HARDWARE_INTERFACES_PUBLIC
   std::vector<StateInterface> export_state_interfaces() override;
 
-  ROSBOT_HARDWARE_INTERFACES_PUBLIC
+  ROBOT_HARDWARE_INTERFACES_PUBLIC
   return_type read(const rclcpp::Time & time, const rclcpp::Duration & period) override;
 
 protected:
@@ -79,6 +79,6 @@ protected:
   uint connection_timeout_ms_;
 };
 
-}  // namespace rosbot_hardware_interfaces
+}  // namespace robot_hardware_interfaces
 
-#endif  // ROSBOT_HARDWARE_INTERFACES__ROSBOT_IMU_SENSOR_HPP_
+#endif  // ROBOT_HARDWARE_INTERFACES__ROBOT_IMU_SENSOR_HPP_

@@ -3,7 +3,7 @@
     <xacro:macro name="ros2_control_system">
         <ros2_control name="imu" type="sensor">
             <hardware>
-                <plugin>rosbot_hardware_interfaces/RosbotImuSensor</plugin>
+                <plugin>robot_hardware_interfaces/RobotImuSensor</plugin>
                 <param name="connection_timeout_ms">120000</param>
                 <param name="connection_check_period_ms">500</param>
             </hardware>
@@ -23,7 +23,7 @@
 
         <ros2_control name="wheels" type="system">
             <hardware>
-                <plugin>rosbot_hardware_interfaces/RosbotSystem</plugin>
+                <plugin>robot_hardware_interfaces/RobotSystem</plugin>
                 <param name="connection_timeout_ms">120000</param>
                 <param name="connection_check_period_ms">500</param>
 
