@@ -3,7 +3,7 @@
     <xacro:macro name="ros2_control_system">
         <ros2_control name="imu" type="sensor">
             <hardware>
-                <plugin>rosbot_hardware_interfaces/RosbotImuSensor</plugin>
+                <plugin>robot_hardware_interfaces/robotImuSensor</plugin>
                 <param name="connection_timeout_ms">120000</param>
                 <param name="connection_check_period_ms">500</param>
             </hardware>
@@ -20,13 +20,11 @@
                 <state_interface name="linear_acceleration.z" />
             </sensor>
         </ros2_control>
-
         <ros2_control name="wheels" type="system">
             <hardware>
-                <plugin>rosbot_hardware_interfaces/RosbotSystem</plugin>
+                <plugin>robot_hardware_interfaces/robotSystem</plugin>
                 <param name="connection_timeout_ms">120000</param>
                 <param name="connection_check_period_ms">500</param>
-
                 <!-- order of velocity commands to be published in motors_cmd Float32MultiArray msg -->
                 <param name="velocity_command_joint_order">
                     rear_right_wheel_joint,
@@ -35,7 +33,6 @@
                     front_left_wheel_joint
                 </param>
             </hardware>
-
             <joint name="front_left_wheel_joint">
                 <command_interface name="velocity" />
                 <state_interface name="position" />

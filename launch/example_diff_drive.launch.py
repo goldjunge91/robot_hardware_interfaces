@@ -29,9 +29,9 @@ def generate_launch_description():
             " ",
             PathJoinSubstitution(
                 [
-                    FindPackageShare("rosbot_xl_description"),
-                    "models/rosbot_xl",
-                    "rosbot_xl.urdf.xacro",
+                    FindPackageShare("robot_xl_description"),
+                    "models/robot_xl",
+                    "robot_xl.urdf.xacro",
                 ]
             ),
         ]
@@ -40,7 +40,7 @@ def generate_launch_description():
 
     robot_controllers = PathJoinSubstitution(
         [
-            FindPackageShare("rosbot_hardware_interfaces"),
+            FindPackageShare("robot_hardware_interfaces"),
             "config",
             "diff_drive_controller.yaml",
         ]
@@ -54,7 +54,7 @@ def generate_launch_description():
             ("/imu_sensor_node/imu", "/_imu/data_raw"),
             ("~/motors_cmd", "/_motors_cmd"),
             ("~/motors_response", "/_motors_response"),
-            ("/rosbot_base_controller/cmd_vel_unstamped", "/cmd_vel"),
+            ("/robot_base_controller/cmd_vel_unstamped", "/cmd_vel"),
         ],
     )
 
@@ -79,7 +79,7 @@ def generate_launch_description():
         package="controller_manager",
         executable="spawner",
         arguments=[
-            "rosbot_base_controller",
+            "robot_base_controller",
             "--controller-manager",
             "/controller_manager",
         ],
