@@ -1,6 +1,6 @@
 # robot_hardware_interfaces
 
-The package uses [ros2_control](https://github.com/ros-controls/ros2_control) to communicate with the RObot's 2R, RObot's 2 PRO and RObot's XL hardware.
+The package uses [ros2_control](https://github.com/ros-controls/ros2_control) to communicate with the Robot's XL hardware.
 RObots contain [micro-ros](https://micro.ros.org/) firmware which provides the encoders and the imu measurements and the motors speed commander.
 
 ### Subscribes
@@ -31,3 +31,5 @@ git clone https://github.com/husarion/robot_hardware_interfaces
 ```bash
 ros2 launch robot_hardware_interfaces example_diff_drive.launch.py
 ```
+
+TODO: we have to add nerf lauchner
