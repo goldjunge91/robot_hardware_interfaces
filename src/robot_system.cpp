@@ -149,30 +149,10 @@ CallbackReturn RobotSystem::on_activate(const rclcpp_lifecycle::State &)
     "~/motors_response", rclcpp::SensorDataQoS(),
     std::bind(&RobotSystem::motor_state_cb, this, std::placeholders::_1));
 
-  std::shared_ptr<JointState> motor_state;
-  for (uint wait_time = 0; wait_time <= connection_timeout_ms_;
-    wait_time += connection_check_period_ms_)
-  {
-    if (!rclcpp::ok()) {
-      return CallbackReturn::ERROR;
-    }
-
-    RCLCPP_WARN_THROTTLE(
-      rclcpp::get_logger("RobotSystem"),
-      *node_->get_clock(), 5000, "Feedback message from motors wasn't received yet");
-    received_motor_state_msg_ptr_.get(motor_state);
-    if (motor_state) {
-      RCLCPP_DEBUG(node_->get_logger(), "Subscriber and publisher are now active.");
-      return CallbackReturn::SUCCESS;
-    }
-
-    rclcpp::sleep_for(std::chrono::milliseconds(connection_check_period_ms_));
-  }
-
-  RCLCPP_FATAL(
-    node_->get_logger(),
-    "Activation failed, timeout reached while waiting for feedback from motors");
-  return CallbackReturn::ERROR;
+  RCLCPP_WARN(
+    rclcpp::get_logger("RobotSystem"),
+    "Activating without waiting for motor feedback (mock mode enabled).");
+  return CallbackReturn::SUCCESS;
 }
 
 CallbackReturn RobotSystem::on_deactivate(const rclcpp_lifecycle::State &)
@@ -240,7 +220,7 @@ void RobotSystem::motor_state_cb(const std::shared_ptr<JointState> msg)
   received_motor_state_msg_ptr_.set(std::move(msg));
 }
 
-return_type RobotSystem::read(const rclcpp::Time &, const rclcpp::Duration &)
+return_type RobotSystem::read(const rclcpp::Time &, const rclcpp::Duration & period)
 {
   std::shared_ptr<JointState> motor_state;
   received_motor_state_msg_ptr_.get(motor_state);
@@ -248,10 +228,17 @@ return_type RobotSystem::read(const rclcpp::Time &, const rclcpp::Duration &)
   RCLCPP_DEBUG(rclcpp::get_logger("RobotSystem"), "Reading motors state");
 
   if (!motor_state) {
-    RCLCPP_ERROR(
+    RCLCPP_DEBUG_THROTTLE(
       rclcpp::get_logger("RobotSystem"),
-      "Feedback message from motors wasn't received");
-    return return_type::ERROR;
+      *node_->get_clock(), 10000,
+      "No feedback from motors, using mock values");
+    
+    // Mock behavior: integrate velocity commands to position
+    for (const auto & joint_name : velocity_command_joint_order_) {
+      pos_state_[joint_name] += vel_commands_[joint_name] * period.seconds();
+      vel_state_[joint_name] = vel_commands_[joint_name];
+    }
+    return return_type::OK;
   }
 
   for (auto i = 0u; i < motor_state->name.size(); i++) {

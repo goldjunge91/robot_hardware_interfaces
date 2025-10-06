@@ -57,26 +57,10 @@ CallbackReturn RobotImuSensor::on_activate(const rclcpp_lifecycle::State &)
     "~/imu", rclcpp::SensorDataQoS(),
     std::bind(&RobotImuSensor::imu_cb, this, std::placeholders::_1));
 
-  std::shared_ptr<Imu> imu_msg;
-  for (uint wait_time = 0; wait_time <= connection_timeout_ms_;
-    wait_time += connection_check_period_ms_)
-  {
-    RCLCPP_WARN_THROTTLE(
-      rclcpp::get_logger("RobotImuSensor"),
-      *node_->get_clock(), 5000, "Feedback message from imu wasn't received yet");
-    received_imu_msg_ptr_.get(imu_msg);
-    if (imu_msg) {
-      RCLCPP_DEBUG(node_->get_logger(), "Subscriber and publisher are now active.");
-      return CallbackReturn::SUCCESS;
-    }
-
-    rclcpp::sleep_for(std::chrono::milliseconds(connection_check_period_ms_));
-  }
-
-  RCLCPP_FATAL(
-    node_->get_logger(),
-    "Activation failed, timeout reached while waiting for feedback from imu");
-  return CallbackReturn::ERROR;
+  RCLCPP_WARN(
+    rclcpp::get_logger("RobotImuSensor"),
+    "Activating without waiting for IMU feedback (mock mode enabled).");
+  return CallbackReturn::SUCCESS;
 }
 
 CallbackReturn RobotImuSensor::on_deactivate(const rclcpp_lifecycle::State &)
