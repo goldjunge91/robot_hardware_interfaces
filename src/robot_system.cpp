@@ -73,6 +73,12 @@ CallbackReturn RobotSystem::on_init(const hardware_interface::HardwareInfo & har
   connection_timeout_ms_ = std::stoul(info_.hardware_parameters["connection_timeout_ms"]);
   connection_check_period_ms_ = std::stoul(info_.hardware_parameters["connection_check_period_ms"]);
 
+  // Read wheel parameters for kinematics (with defaults matching robot_xl)
+  wheel_radius_ = info_.hardware_parameters.count("wheel_radius") > 0 ?
+    std::stod(info_.hardware_parameters["wheel_radius"]) : 0.047;  // 47mm default
+  wheel_base_ = info_.hardware_parameters.count("wheel_base") > 0 ?
+    std::stod(info_.hardware_parameters["wheel_base"]) : 0.220;  // Average of x and y separation
+
   std::string velocity_command_joint_order_raw =
     info_.hardware_parameters["velocity_command_joint_order"];
   // remove whitespaces
@@ -138,19 +144,25 @@ CallbackReturn RobotSystem::on_activate(const rclcpp_lifecycle::State &)
     vel_commands_[x.first] = 0.0;
   }
 
-  // Note: We don't publish motors_cmd anymore since the firmware expects cmd_vel directly
-  // The mecanum_drive_controller will publish cmd_vel which goes directly to the Pico
-  // motor_command_publisher_ = node_->create_publisher<Float32MultiArray>(
-  //   "~/motors_cmd",
-  //   rclcpp::SensorDataQoS());
-  // realtime_motor_command_publisher_ =
-  //   std::make_shared<realtime_tools::RealtimePublisher<Float32MultiArray>>(motor_command_publisher_);
+  // Create Twist publisher for velocity commands to firmware
+  cmd_vel_publisher_ = node_->create_publisher<Twist>(
+    "/cmd_vel",
+    rclcpp::SystemDefaultsQoS());
+  realtime_cmd_vel_publisher_ =
+    std::make_shared<realtime_tools::RealtimePublisher<Twist>>(cmd_vel_publisher_);
 
   motor_state_subscriber_ =
     node_->create_subscription<JointState>(
     "~/motors_response", rclcpp::SensorDataQoS(),
     std::bind(&RobotSystem::motor_state_cb, this, std::placeholders::_1));
 
+  // Initialize last command time
+  last_command_time_ = node_->get_clock()->now();
+
+  RCLCPP_INFO(
+    rclcpp::get_logger("RobotSystem"),
+    "Activated with wheel_radius=%.3f, wheel_base=%.3f", wheel_radius_, wheel_base_);
+  
   RCLCPP_WARN(
     rclcpp::get_logger("RobotSystem"),
     "Activating without waiting for motor feedback (mock mode enabled).");
@@ -160,6 +172,16 @@ CallbackReturn RobotSystem::on_activate(const rclcpp_lifecycle::State &)
 CallbackReturn RobotSystem::on_deactivate(const rclcpp_lifecycle::State &)
 {
   RCLCPP_INFO(rclcpp::get_logger("RobotSystem"), "Deactivating");
+  
+  // Publish final zero velocity command for safety
+  if (realtime_cmd_vel_publisher_ && realtime_cmd_vel_publisher_->trylock()) {
+    auto & cmd_vel_msg = realtime_cmd_vel_publisher_->msg_;
+    cmd_vel_msg.linear.x = 0.0;
+    cmd_vel_msg.linear.y = 0.0;
+    cmd_vel_msg.angular.z = 0.0;
+    realtime_cmd_vel_publisher_->unlockAndPublish();
+  }
+  
   cleanup_node();
   received_motor_state_msg_ptr_.set(nullptr);
   return CallbackReturn::SUCCESS;
@@ -212,8 +234,8 @@ std::vector<CommandInterface> RobotSystem::export_command_interfaces()
 void RobotSystem::cleanup_node()
 {
   motor_state_subscriber_.reset();
-  // realtime_motor_command_publisher_.reset();
-  // motor_command_publisher_.reset();
+  realtime_cmd_vel_publisher_.reset();
+  cmd_vel_publisher_.reset();
 }
 
 void RobotSystem::motor_state_cb(const std::shared_ptr<JointState> msg)
@@ -263,13 +285,66 @@ return_type RobotSystem::read(const rclcpp::Time &, const rclcpp::Duration & per
   return return_type::OK;
 }
 
-return_type RobotSystem::write(const rclcpp::Time &, const rclcpp::Duration &)
+return_type RobotSystem::write(const rclcpp::Time & time, const rclcpp::Duration &)
 {
-  // Note: We don't publish motor commands here anymore since the mecanum_drive_controller
-  // publishes cmd_vel directly to the Pico firmware. The hardware interface just tracks
-  // the commanded velocities for state feedback.
+  if (!realtime_cmd_vel_publisher_) {
+    RCLCPP_ERROR_THROTTLE(
+      rclcpp::get_logger("RobotSystem"),
+      *node_->get_clock(), 1000,
+      "Realtime publisher not initialized");
+    return return_type::ERROR;
+  }
+
+  // Check for command timeout (500ms)
+  const double timeout_seconds = 0.5;
+  double time_since_last_command = (time - last_command_time_).seconds();
   
-  RCLCPP_DEBUG(rclcpp::get_logger("RobotSystem"), "Hardware interface write - commands tracked");
+  if (realtime_cmd_vel_publisher_->trylock()) {
+    auto & cmd_vel_msg = realtime_cmd_vel_publisher_->msg_;
+    
+    // Safety timeout: publish zero velocity if no commands received for 500ms
+    if (time_since_last_command > timeout_seconds) {
+      cmd_vel_msg.linear.x = 0.0;
+      cmd_vel_msg.linear.y = 0.0;
+      cmd_vel_msg.angular.z = 0.0;
+      
+      RCLCPP_WARN_THROTTLE(
+        rclcpp::get_logger("RobotSystem"),
+        *node_->get_clock(), 1000,
+        "Velocity command timeout (%.2fs since last command), publishing zero velocity",
+        time_since_last_command);
+    } else {
+      // Apply mecanum drive forward kinematics: wheel velocities → robot velocity
+      // For mecanum drive:
+      // vx = (vfl + vfr + vrl + vrr) / 4 * r
+      // vy = (-vfl + vfr + vrl - vrr) / 4 * r
+      // ω = (-vfl + vfr - vrl + vrr) / 4 * r / L
+      
+      double vfl = vel_commands_["front_left_wheel_joint"];
+      double vfr = vel_commands_["front_right_wheel_joint"];
+      double vrl = vel_commands_["rear_left_wheel_joint"];
+      double vrr = vel_commands_["rear_right_wheel_joint"];
+      
+      // Calculate normalized velocities (before applying wheel radius)
+      double vx_normalized = (vfl + vfr + vrl + vrr) / 4.0;
+      double vy_normalized = (-vfl + vfr + vrl - vrr) / 4.0;
+      double omega_normalized = (-vfl + vfr - vrl + vrr) / 4.0;
+      
+      // Apply wheel radius and wheel base
+      cmd_vel_msg.linear.x = vx_normalized * wheel_radius_;
+      cmd_vel_msg.linear.y = vy_normalized * wheel_radius_;
+      cmd_vel_msg.angular.z = omega_normalized * wheel_radius_ / wheel_base_;
+      
+      RCLCPP_DEBUG(
+        rclcpp::get_logger("RobotSystem"),
+        "Publishing cmd_vel: linear.x=%.3f, linear.y=%.3f, angular.z=%.3f",
+        cmd_vel_msg.linear.x, cmd_vel_msg.linear.y, cmd_vel_msg.angular.z);
+      
+      last_command_time_ = time;
+    }
+    
+    realtime_cmd_vel_publisher_->unlockAndPublish();
+  }
   
   return return_type::OK;
 }

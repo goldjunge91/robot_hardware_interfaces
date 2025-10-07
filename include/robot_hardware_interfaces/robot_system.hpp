@@ -17,6 +17,7 @@
 
 #include "std_msgs/msg/float32_multi_array.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
+#include "geometry_msgs/msg/twist.hpp"
 
 namespace robot_hardware_interfaces
 {
@@ -27,6 +28,7 @@ using CommandInterface = hardware_interface::CommandInterface;
 
 using JointState = sensor_msgs::msg::JointState;
 using Float32MultiArray = std_msgs::msg::Float32MultiArray;
+using Twist = geometry_msgs::msg::Twist;
 
 class RobotSystem : public hardware_interface::SystemInterface
 {
@@ -71,10 +73,9 @@ protected:
 
   realtime_tools::RealtimeBox<std::shared_ptr<JointState>> received_motor_state_msg_ptr_{nullptr};
 
-  // Note: Motor command publisher removed - mecanum_drive_controller publishes cmd_vel directly
-  // std::shared_ptr<rclcpp::Publisher<Float32MultiArray>> motor_command_publisher_ = nullptr;
-  // std::shared_ptr<realtime_tools::RealtimePublisher<Float32MultiArray>>
-  // realtime_motor_command_publisher_ = nullptr;
+  // Twist publisher for velocity commands to firmware
+  std::shared_ptr<rclcpp::Publisher<Twist>> cmd_vel_publisher_ = nullptr;
+  std::shared_ptr<realtime_tools::RealtimePublisher<Twist>> realtime_cmd_vel_publisher_ = nullptr;
 
   rclcpp::Subscription<JointState>::SharedPtr motor_state_subscriber_ = nullptr;
 
@@ -94,6 +95,13 @@ protected:
 
   uint connection_check_period_ms_;
   uint connection_timeout_ms_;
+
+  // Wheel parameters for kinematics
+  double wheel_radius_;
+  double wheel_base_;
+  
+  // Safety timeout tracking
+  rclcpp::Time last_command_time_;
 };
 
 }  // namespace robot_hardware_interfaces
