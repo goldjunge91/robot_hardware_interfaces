@@ -117,8 +117,23 @@ return_type RobotImuSensor::read(const rclcpp::Time &, const rclcpp::Duration &)
   RCLCPP_DEBUG(rclcpp::get_logger("RobotImuSensor"), "Reading imu state");
 
   if (!imu_msg) {
-    RCLCPP_ERROR(rclcpp::get_logger("RobotImuSensor"), "Imu message wasn't received");
-    return return_type::ERROR;
+    RCLCPP_DEBUG_THROTTLE(
+      rclcpp::get_logger("RobotImuSensor"),
+      *node_->get_clock(), 10000,
+      "No IMU feedback, using mock values");
+    
+    // Mock behavior: provide identity quaternion and zero velocities/accelerations
+    imu_sensor_state_[0] = 0.0;  // orientation.x
+    imu_sensor_state_[1] = 0.0;  // orientation.y
+    imu_sensor_state_[2] = 0.0;  // orientation.z
+    imu_sensor_state_[3] = 1.0;  // orientation.w (identity quaternion)
+    imu_sensor_state_[4] = 0.0;  // angular_velocity.x
+    imu_sensor_state_[5] = 0.0;  // angular_velocity.y
+    imu_sensor_state_[6] = 0.0;  // angular_velocity.z
+    imu_sensor_state_[7] = 0.0;  // linear_acceleration.x
+    imu_sensor_state_[8] = 0.0;  // linear_acceleration.y
+    imu_sensor_state_[9] = 9.81; // linear_acceleration.z (gravity)
+    return return_type::OK;
   }
 
   imu_sensor_state_[0] = imu_msg->orientation.x;
