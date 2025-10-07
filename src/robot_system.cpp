@@ -138,11 +138,13 @@ CallbackReturn RobotSystem::on_activate(const rclcpp_lifecycle::State &)
     vel_commands_[x.first] = 0.0;
   }
 
-  motor_command_publisher_ = node_->create_publisher<Float32MultiArray>(
-    "~/motors_cmd",
-    rclcpp::SensorDataQoS());
-  realtime_motor_command_publisher_ =
-    std::make_shared<realtime_tools::RealtimePublisher<Float32MultiArray>>(motor_command_publisher_);
+  // Note: We don't publish motors_cmd anymore since the firmware expects cmd_vel directly
+  // The mecanum_drive_controller will publish cmd_vel which goes directly to the Pico
+  // motor_command_publisher_ = node_->create_publisher<Float32MultiArray>(
+  //   "~/motors_cmd",
+  //   rclcpp::SensorDataQoS());
+  // realtime_motor_command_publisher_ =
+  //   std::make_shared<realtime_tools::RealtimePublisher<Float32MultiArray>>(motor_command_publisher_);
 
   motor_state_subscriber_ =
     node_->create_subscription<JointState>(
@@ -210,8 +212,8 @@ std::vector<CommandInterface> RobotSystem::export_command_interfaces()
 void RobotSystem::cleanup_node()
 {
   motor_state_subscriber_.reset();
-  realtime_motor_command_publisher_.reset();
-  motor_command_publisher_.reset();
+  // realtime_motor_command_publisher_.reset();
+  // motor_command_publisher_.reset();
 }
 
 void RobotSystem::motor_state_cb(const std::shared_ptr<JointState> msg)
@@ -263,19 +265,12 @@ return_type RobotSystem::read(const rclcpp::Time &, const rclcpp::Duration & per
 
 return_type RobotSystem::write(const rclcpp::Time &, const rclcpp::Duration &)
 {
-  if (realtime_motor_command_publisher_->trylock()) {
-    auto & motor_command = realtime_motor_command_publisher_->msg_;
-    motor_command.data.clear();
-
-    RCLCPP_DEBUG(rclcpp::get_logger("RobotSystem"), "Wrtiting motors cmd message");
-
-    for (auto const & joint : velocity_command_joint_order_) {
-      motor_command.data.push_back(vel_commands_[joint]);
-    }
-
-    realtime_motor_command_publisher_->unlockAndPublish();
-  }
-
+  // Note: We don't publish motor commands here anymore since the mecanum_drive_controller
+  // publishes cmd_vel directly to the Pico firmware. The hardware interface just tracks
+  // the commanded velocities for state feedback.
+  
+  RCLCPP_DEBUG(rclcpp::get_logger("RobotSystem"), "Hardware interface write - commands tracked");
+  
   return return_type::OK;
 }
 

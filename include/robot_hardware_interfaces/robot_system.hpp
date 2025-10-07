@@ -71,10 +71,10 @@ protected:
 
   realtime_tools::RealtimeBox<std::shared_ptr<JointState>> received_motor_state_msg_ptr_{nullptr};
 
-  std::shared_ptr<rclcpp::Publisher<Float32MultiArray>> motor_command_publisher_ = nullptr;
-
-  std::shared_ptr<realtime_tools::RealtimePublisher<Float32MultiArray>>
-  realtime_motor_command_publisher_ = nullptr;
+  // Note: Motor command publisher removed - mecanum_drive_controller publishes cmd_vel directly
+  // std::shared_ptr<rclcpp::Publisher<Float32MultiArray>> motor_command_publisher_ = nullptr;
+  // std::shared_ptr<realtime_tools::RealtimePublisher<Float32MultiArray>>
+  // realtime_motor_command_publisher_ = nullptr;
 
   rclcpp::Subscription<JointState>::SharedPtr motor_state_subscriber_ = nullptr;
 
