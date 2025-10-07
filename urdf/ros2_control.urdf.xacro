@@ -24,10 +24,11 @@
         <ros2_control name="wheels" type="system">
             <hardware>
                 <plugin>robot_hardware_interfaces/RobotSystem</plugin>
-                <param name="connection_timeout_ms">120000</param>
+                <!-- Timeout for waiting for first joint state message during activation (ms) -->
+                <param name="connection_timeout_ms">5000</param>
                 <param name="connection_check_period_ms">500</param>
 
-                <!-- order of velocity commands to be published in motors_cmd Float32MultiArray msg -->
+                <!-- Order of velocity commands for wheel joints -->
                 <param name="velocity_command_joint_order">
                     rear_right_wheel_joint,
                     rear_left_wheel_joint,

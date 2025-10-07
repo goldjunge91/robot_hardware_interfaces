@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <thread>
+#include <chrono>
 
 #include "rclcpp/logging.hpp"
 
@@ -151,9 +153,10 @@ CallbackReturn RobotSystem::on_activate(const rclcpp_lifecycle::State &)
   realtime_cmd_vel_publisher_ =
     std::make_shared<realtime_tools::RealtimePublisher<Twist>>(cmd_vel_publisher_);
 
+  // Subscribe to /joint_states directly (standardized topic from firmware)
   motor_state_subscriber_ =
     node_->create_subscription<JointState>(
-    "~/motors_response", rclcpp::SensorDataQoS(),
+    "/joint_states", rclcpp::SensorDataQoS(),
     std::bind(&RobotSystem::motor_state_cb, this, std::placeholders::_1));
 
   // Initialize last command time
@@ -161,12 +164,40 @@ CallbackReturn RobotSystem::on_activate(const rclcpp_lifecycle::State &)
 
   RCLCPP_INFO(
     rclcpp::get_logger("RobotSystem"),
-    "Activated with wheel_radius=%.3f, wheel_base=%.3f", wheel_radius_, wheel_base_);
+    "Waiting for first joint state message from firmware (timeout: %u ms)...",
+    connection_timeout_ms_);
+
+  // Wait for first joint state message
+  auto start_time = node_->get_clock()->now();
+  std::shared_ptr<JointState> initial_state;
+  double timeout_seconds = connection_timeout_ms_ / 1000.0;
   
-  RCLCPP_WARN(
-    rclcpp::get_logger("RobotSystem"),
-    "Activating without waiting for motor feedback (mock mode enabled).");
-  return CallbackReturn::SUCCESS;
+  while (rclcpp::ok()) {
+    received_motor_state_msg_ptr_.get(initial_state);
+    
+    if (initial_state) {
+      RCLCPP_INFO(
+        rclcpp::get_logger("RobotSystem"),
+        "Successfully activated with real hardware feedback. "
+        "Received joint states for %zu joints. "
+        "Parameters: wheel_radius=%.3f m, wheel_base=%.3f m",
+        initial_state->name.size(), wheel_radius_, wheel_base_);
+      return CallbackReturn::SUCCESS;
+    }
+    
+    if ((node_->get_clock()->now() - start_time).seconds() > timeout_seconds) {
+      RCLCPP_ERROR(
+        rclcpp::get_logger("RobotSystem"),
+        "Timeout (%.1f s) waiting for joint states from firmware. "
+        "Ensure micro-ROS agent is running and firmware is publishing to /joint_states",
+        timeout_seconds);
+      return CallbackReturn::ERROR;
+    }
+    
+    std::this_thread::sleep_for(std::chrono::milliseconds(connection_check_period_ms_));
+  }
+  
+  return CallbackReturn::ERROR;
 }
 
 CallbackReturn RobotSystem::on_deactivate(const rclcpp_lifecycle::State &)
@@ -244,43 +275,48 @@ void RobotSystem::motor_state_cb(const std::shared_ptr<JointState> msg)
   received_motor_state_msg_ptr_.set(std::move(msg));
 }
 
-return_type RobotSystem::read(const rclcpp::Time &, const rclcpp::Duration & period)
+return_type RobotSystem::read(const rclcpp::Time &, const rclcpp::Duration &)
 {
   std::shared_ptr<JointState> motor_state;
   received_motor_state_msg_ptr_.get(motor_state);
 
   RCLCPP_DEBUG(rclcpp::get_logger("RobotSystem"), "Reading motors state");
 
+  // No mock mode - return ERROR if no data received from firmware
   if (!motor_state) {
-    RCLCPP_DEBUG_THROTTLE(
+    RCLCPP_ERROR_THROTTLE(
       rclcpp::get_logger("RobotSystem"),
-      *node_->get_clock(), 10000,
-      "No feedback from motors, using mock values");
-    
-    // Mock behavior: integrate velocity commands to position
-    for (const auto & joint_name : velocity_command_joint_order_) {
-      pos_state_[joint_name] += vel_commands_[joint_name] * period.seconds();
-      vel_state_[joint_name] = vel_commands_[joint_name];
-    }
-    return return_type::OK;
+      *node_->get_clock(), 1000,
+      "No joint states received from firmware");
+    return return_type::ERROR;
   }
 
+  // Verify and map joint names from firmware
+  // Expected names: front_left_wheel_joint, front_right_wheel_joint, 
+  //                 rear_left_wheel_joint, rear_right_wheel_joint
   for (auto i = 0u; i < motor_state->name.size(); i++) {
     if (pos_state_.find(motor_state->name[i]) == pos_state_.end() ||
       vel_state_.find(motor_state->name[i]) == vel_state_.end())
     {
       RCLCPP_ERROR(
-        rclcpp::get_logger("RobotSystem"), "Position or velocity feedback not found for joint %s",
+        rclcpp::get_logger("RobotSystem"), 
+        "Joint name mismatch: received '%s' but not found in configured joints. "
+        "Expected: front_left_wheel_joint, front_right_wheel_joint, "
+        "rear_left_wheel_joint, rear_right_wheel_joint",
         motor_state->name[i].c_str());
       return return_type::ERROR;
     }
 
+    // Update position and velocity state interfaces
     pos_state_[motor_state->name[i]] = motor_state->position[i];
     vel_state_[motor_state->name[i]] = motor_state->velocity[i];
 
     RCLCPP_DEBUG(
-      rclcpp::get_logger("RobotSystem"), "Position feedback: %f, velocity feedback: %f",
-      pos_state_[motor_state->name[i]], vel_state_[motor_state->name[i]]);
+      rclcpp::get_logger("RobotSystem"), 
+      "Joint '%s' - Position: %.3f rad, Velocity: %.3f rad/s",
+      motor_state->name[i].c_str(),
+      pos_state_[motor_state->name[i]], 
+      vel_state_[motor_state->name[i]]);
   }
   return return_type::OK;
 }
