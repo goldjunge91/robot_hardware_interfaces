@@ -1,6 +1,8 @@
 #include "robot_hardware_interfaces/robot_imu_sensor.hpp"
 
+#include <chrono>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "rclcpp/logging.hpp"
@@ -54,12 +56,28 @@ CallbackReturn RobotImuSensor::on_activate(const rclcpp_lifecycle::State &)
   }
 
   imu_subscriber_ = node_->create_subscription<Imu>(
-    "~/imu", rclcpp::SensorDataQoS(),
+    "/imu/data_raw", rclcpp::SensorDataQoS(),
     std::bind(&RobotImuSensor::imu_cb, this, std::placeholders::_1));
 
-  RCLCPP_WARN(
+  // Wait for first IMU message (up to 5 seconds)
+  auto start_time = node_->get_clock()->now();
+  std::shared_ptr<Imu> imu_msg;
+  received_imu_msg_ptr_.get(imu_msg);
+  
+  while (!imu_msg) {
+    if ((node_->get_clock()->now() - start_time).seconds() > 5.0) {
+      RCLCPP_ERROR(
+        rclcpp::get_logger("RobotImuSensor"),
+        "Timeout waiting for IMU data from firmware");
+      return CallbackReturn::ERROR;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    received_imu_msg_ptr_.get(imu_msg);
+  }
+
+  RCLCPP_INFO(
     rclcpp::get_logger("RobotImuSensor"),
-    "Activating without waiting for IMU feedback (mock mode enabled).");
+    "Successfully activated with real IMU feedback");
   return CallbackReturn::SUCCESS;
 }
 
@@ -101,6 +119,12 @@ std::vector<StateInterface> RobotImuSensor::export_state_interfaces()
 void RobotImuSensor::cleanup_node()
 {
   imu_subscriber_.reset();
+  
+  if (executor_thread_ && executor_thread_->joinable()) {
+    executor_.cancel();
+    executor_thread_->join();
+    executor_thread_.reset();
+  }
 }
 
 void RobotImuSensor::imu_cb(const std::shared_ptr<Imu> msg)
@@ -117,25 +141,14 @@ return_type RobotImuSensor::read(const rclcpp::Time &, const rclcpp::Duration &)
   RCLCPP_DEBUG(rclcpp::get_logger("RobotImuSensor"), "Reading imu state");
 
   if (!imu_msg) {
-    RCLCPP_DEBUG_THROTTLE(
+    RCLCPP_ERROR_THROTTLE(
       rclcpp::get_logger("RobotImuSensor"),
-      *node_->get_clock(), 10000,
-      "No IMU feedback, using mock values");
-    
-    // Mock behavior: provide identity quaternion and zero velocities/accelerations
-    imu_sensor_state_[0] = 0.0;  // orientation.x
-    imu_sensor_state_[1] = 0.0;  // orientation.y
-    imu_sensor_state_[2] = 0.0;  // orientation.z
-    imu_sensor_state_[3] = 1.0;  // orientation.w (identity quaternion)
-    imu_sensor_state_[4] = 0.0;  // angular_velocity.x
-    imu_sensor_state_[5] = 0.0;  // angular_velocity.y
-    imu_sensor_state_[6] = 0.0;  // angular_velocity.z
-    imu_sensor_state_[7] = 0.0;  // linear_acceleration.x
-    imu_sensor_state_[8] = 0.0;  // linear_acceleration.y
-    imu_sensor_state_[9] = 9.81; // linear_acceleration.z (gravity)
-    return return_type::OK;
+      *node_->get_clock(), 1000,
+      "No IMU data received from firmware");
+    return return_type::ERROR;
   }
 
+  // Update all 10 state interfaces
   imu_sensor_state_[0] = imu_msg->orientation.x;
   imu_sensor_state_[1] = imu_msg->orientation.y;
   imu_sensor_state_[2] = imu_msg->orientation.z;

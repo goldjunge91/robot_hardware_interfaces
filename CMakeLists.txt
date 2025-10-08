@@ -15,6 +15,7 @@ find_package(ament_cmake REQUIRED)
 find_package(controller_interface REQUIRED)
 find_package(hardware_interface REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
@@ -41,6 +42,7 @@ ament_target_dependencies(
   rclcpp
   pluginlib
   std_msgs
+  sensor_msgs
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE "ROBOT_HARDWARE_INTERFACES_BUILDING_DLL")
@@ -80,6 +82,24 @@ ament_export_dependencies(
   rclcpp_lifecycle
   rclcpp
   std_msgs
+  sensor_msgs
 )
+
+# Testing
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  find_package(sensor_msgs REQUIRED)
+  
+  ament_add_gtest(test_robot_imu_sensor test/test_robot_imu_sensor.cpp)
+  target_include_directories(test_robot_imu_sensor PRIVATE include)
+  ament_target_dependencies(test_robot_imu_sensor
+    hardware_interface
+    rclcpp
+    rclcpp_lifecycle
+    sensor_msgs
+    realtime_tools
+  )
+  target_link_libraries(test_robot_imu_sensor ${PROJECT_NAME})
+endif()
 
 ament_package()
