@@ -140,6 +140,17 @@ CallbackReturn RobotSystem::on_activate(const rclcpp_lifecycle::State&)
   }
 
   // Create Twist publisher for velocity commands to firmware
+  // REMOVED: motor_command_publisher_ (Float32MultiArray) - replaced with standard Twist message
+  // The old approach used a custom Float32MultiArray format which was:
+  // - Non-standard and incompatible with ROS2 ecosystem tools
+  // - Required manual array index management
+  // - Lacked semantic meaning for velocity components
+  // New approach uses geometry_msgs/Twist which:
+  // - Is the standard ROS2 velocity command message (REP-103)
+  // - Works seamlessly with Nav2, teleop_twist_keyboard, and other standard tools
+  // - Provides clear semantic meaning (linear.x/y/z, angular.x/y/z)
+  // - Firmware handles inverse kinematics (Twist → wheel velocities)
+  // - Hardware interface handles forward kinematics (wheel velocities → Twist)
   cmd_vel_publisher_ = node_->create_publisher<Twist>("/cmd_vel", rclcpp::SystemDefaultsQoS());
   realtime_cmd_vel_publisher_ = std::make_shared<realtime_tools::RealtimePublisher<Twist>>(cmd_vel_publisher_);
 
@@ -249,6 +260,8 @@ std::vector<CommandInterface> RobotSystem::export_command_interfaces()
 void RobotSystem::cleanup_node()
 {
   motor_state_subscriber_.reset();
+  // REMOVED: realtime_motor_command_publisher_ and motor_command_publisher_ (Float32MultiArray)
+  // These were replaced with Twist-based publishers for standard ROS2 compatibility
   realtime_cmd_vel_publisher_.reset();
   cmd_vel_publisher_.reset();
 

@@ -74,6 +74,16 @@ protected:
   realtime_tools::RealtimeBox<std::shared_ptr<JointState>> received_motor_state_msg_ptr_{nullptr};
 
   // Twist publisher for velocity commands to firmware
+  // ARCHITECTURAL DECISION: Using geometry_msgs/Twist instead of std_msgs/Float32MultiArray
+  // Rationale:
+  // - Twist is the standard ROS2 message type for velocity commands (REP-103)
+  // - Provides semantic meaning (linear.x, linear.y, angular.z) vs raw array indices
+  // - Compatible with standard ROS2 tools (Nav2, teleop, etc.)
+  // - Firmware performs inverse kinematics to convert Twist → wheel velocities
+  // - Hardware interface performs forward kinematics to convert wheel velocities → Twist
+  // - Eliminates need for custom Float32MultiArray message format
+  // Previous implementation used motor_command_publisher_ (Float32MultiArray) which was
+  // non-standard and incompatible with ROS2 ecosystem tools.
   std::shared_ptr<rclcpp::Publisher<Twist>> cmd_vel_publisher_ = nullptr;
   std::shared_ptr<realtime_tools::RealtimePublisher<Twist>> realtime_cmd_vel_publisher_ = nullptr;
 
