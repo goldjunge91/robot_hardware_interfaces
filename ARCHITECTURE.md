@@ -268,6 +268,7 @@ stateDiagram-v2
 **Decision**: Use `geometry_msgs/Twist` for velocity commands instead of `std_msgs/Float32MultiArray`
 
 **Rationale**:
+
 - Standard ROS2 message type (REP-103)
 - Semantic meaning (linear.x/y/z, angular.x/y/z)
 - Compatible with Nav2, teleop, and other standard tools
@@ -279,6 +280,7 @@ stateDiagram-v2
 **Decision**: Hardware interface returns ERROR if no real data received
 
 **Rationale**:
+
 - Ensures system operates with real hardware feedback
 - Faster detection of connection issues
 - Prevents silent failures
@@ -289,6 +291,7 @@ stateDiagram-v2
 **Decision**: Use realtime-safe data structures (RealtimeBox, RealtimePublisher)
 
 **Rationale**:
+
 - Prevents priority inversion in control loop
 - Lock-free data exchange between callbacks and control loop
 - Maintains deterministic timing
@@ -298,34 +301,35 @@ stateDiagram-v2
 **Decision**: Publish zero velocity if no commands received for 500ms
 
 **Rationale**:
+
 - Prevents runaway robot if controller crashes
 - Standard safety practice in mobile robotics
 - Configurable timeout period
 
 ## Configuration Parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `connection_timeout_ms` | uint | 5000 | Timeout waiting for first joint state (ms) |
-| `connection_check_period_ms` | uint | 100 | Period to check for connection (ms) |
-| `wheel_radius` | double | 0.047 | Wheel radius in meters |
-| `wheel_base` | double | 0.220 | Wheel base (center to wheel) in meters |
-| `velocity_command_joint_order` | string | - | Comma-separated joint names in order |
+| Parameter                      | Type   | Default | Description                                |
+| ------------------------------ | ------ | ------- | ------------------------------------------ |
+| `connection_timeout_ms`        | uint   | 5000    | Timeout waiting for first joint state (ms) |
+| `connection_check_period_ms`   | uint   | 100     | Period to check for connection (ms)        |
+| `wheel_radius`                 | double | 0.047   | Wheel radius in meters                     |
+| `wheel_base`                   | double | 0.220   | Wheel base (center to wheel) in meters     |
+| `velocity_command_joint_order` | string | -       | Comma-separated joint names in order       |
 
 ## Topics
 
 ### Published
 
-| Topic | Type | QoS | Rate | Description |
-|-------|------|-----|------|-------------|
+| Topic      | Type                | QoS               | Rate   | Description                   |
+| ---------- | ------------------- | ----------------- | ------ | ----------------------------- |
 | `/cmd_vel` | geometry_msgs/Twist | SystemDefaultsQoS | 100 Hz | Velocity commands to firmware |
 
 ### Subscribed
 
-| Topic | Type | QoS | Rate | Description |
-|-------|------|-----|------|-------------|
+| Topic           | Type                   | QoS           | Rate   | Description                    |
+| --------------- | ---------------------- | ------------- | ------ | ------------------------------ |
 | `/joint_states` | sensor_msgs/JointState | SensorDataQoS | 100 Hz | Encoder feedback from firmware |
-| `/imu/data_raw` | sensor_msgs/Imu | SensorDataQoS | 50 Hz | IMU data from firmware |
+| `/imu/data_raw` | sensor_msgs/Imu        | SensorDataQoS | 50 Hz  | IMU data from firmware         |
 
 ## Performance Characteristics
 
@@ -337,13 +341,13 @@ stateDiagram-v2
 
 ## Error Handling
 
-| Error Condition | Detection | Action | Recovery |
-|----------------|-----------|--------|----------|
-| No joint states on activation | Timeout (5s) | Return ERROR from on_activate() | Retry activation |
-| No joint states during operation | Null pointer check | Return ERROR from read() | Controller manager handles |
-| Joint name mismatch | Name lookup failure | Log error, return ERROR | Fix URDF/firmware |
-| Publisher not initialized | Null pointer check | Return ERROR from write() | Should not happen |
-| Command timeout | Time since last command > 500ms | Publish zero velocity | Automatic on next command |
+| Error Condition                  | Detection                       | Action                          | Recovery                   |
+| -------------------------------- | ------------------------------- | ------------------------------- | -------------------------- |
+| No joint states on activation    | Timeout (5s)                    | Return ERROR from on_activate() | Retry activation           |
+| No joint states during operation | Null pointer check              | Return ERROR from read()        | Controller manager handles |
+| Joint name mismatch              | Name lookup failure             | Log error, return ERROR         | Fix URDF/firmware          |
+| Publisher not initialized        | Null pointer check              | Return ERROR from write()       | Should not happen          |
+| Command timeout                  | Time since last command > 500ms | Publish zero velocity           | Automatic on next command  |
 
 ## Dependencies
 
