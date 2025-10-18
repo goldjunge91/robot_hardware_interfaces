@@ -1,6 +1,12 @@
 #ifndef ROBOT_HARDWARE_INTERFACES__ROBOT_SYSTEM_HPP_
 #define ROBOT_HARDWARE_INTERFACES__ROBOT_SYSTEM_HPP_
 
+#include <map>
+#include <memory>
+#include <string>
+#include <thread>
+#include <vector>
+
 #include "robot_hardware_interfaces/visibility_control.hpp"
 
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"

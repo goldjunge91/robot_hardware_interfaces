@@ -1,5 +1,7 @@
 #include "robot_hardware_interfaces/robot_system.hpp"
 
+#include <cctype>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <algorithm>
