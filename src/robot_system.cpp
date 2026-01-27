@@ -25,12 +25,16 @@ CallbackReturn RobotSystem::on_init(const hardware_interface::HardwareInfo& hard
 
   for (const hardware_interface::ComponentInfo& joint : info_.joints)
   {
+    RCLCPP_INFO(rclcpp::get_logger("RobotSystem"), "Validating joint '%s'...", joint.name.c_str());
+    
     if (joint.command_interfaces.size() != 1)
     {
       RCLCPP_FATAL(rclcpp::get_logger("RobotSystem"), "Joint '%s' has %zu command interfaces found. 1 expected.",
                    joint.name.c_str(), joint.command_interfaces.size());
       return CallbackReturn::ERROR;
     }
+    
+    RCLCPP_INFO(rclcpp::get_logger("RobotSystem"), "  - Command Interface: %s", joint.command_interfaces[0].name.c_str());
 
     if (joint.command_interfaces[0].name != hardware_interface::HW_IF_VELOCITY)
     {
@@ -250,10 +254,14 @@ std::vector<StateInterface> RobotSystem::export_state_interfaces()
 std::vector<CommandInterface> RobotSystem::export_command_interfaces()
 {
   std::vector<CommandInterface> command_interfaces;
+  RCLCPP_INFO(rclcpp::get_logger("RobotSystem"), "Exporting Command Interfaces:");
   for (auto i = 0u; i < info_.joints.size(); i++)
   {
     command_interfaces.emplace_back(hardware_interface::CommandInterface(
         info_.joints[i].name, hardware_interface::HW_IF_VELOCITY, &vel_commands_[info_.joints[i].name]));
+    
+    RCLCPP_INFO(rclcpp::get_logger("RobotSystem"), "  - Exported: %s/%s", 
+                info_.joints[i].name.c_str(), hardware_interface::HW_IF_VELOCITY);
   }
 
   return command_interfaces;
