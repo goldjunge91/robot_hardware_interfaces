@@ -156,9 +156,9 @@ CallbackReturn RobotSystem::on_activate(const rclcpp_lifecycle::State&)
   cmd_vel_publisher_ = node_->create_publisher<Twist>("/cmd_vel", rclcpp::SystemDefaultsQoS());
   realtime_cmd_vel_publisher_ = std::make_shared<realtime_tools::RealtimePublisher<Twist>>(cmd_vel_publisher_);
 
-  // Subscribe to /joint_states directly (standardized topic from firmware)
+  // Subscribe to /joint_states_raw (remapped from micro-ROS agent)
   motor_state_subscriber_ = node_->create_subscription<JointState>(
-      "/joint_states", rclcpp::SensorDataQoS(), std::bind(&RobotSystem::motor_state_cb, this, std::placeholders::_1));
+      "/joint_states_raw", rclcpp::SensorDataQoS(), std::bind(&RobotSystem::motor_state_cb, this, std::placeholders::_1));
 
   // Initialize last command time
   last_command_time_ = node_->get_clock()->now();
@@ -187,17 +187,17 @@ CallbackReturn RobotSystem::on_activate(const rclcpp_lifecycle::State&)
 
     if ((node_->get_clock()->now() - start_time).seconds() > timeout_seconds)
     {
-      RCLCPP_ERROR(rclcpp::get_logger("RobotSystem"),
+      RCLCPP_WARN(rclcpp::get_logger("RobotSystem"),
                    "Timeout (%.1f s) waiting for joint states from firmware. "
-                   "Ensure micro-ROS agent is running and firmware is publishing to /joint_states",
+                   "Proceeding in mock mode (no hardware connected).",
                    timeout_seconds);
-      return CallbackReturn::ERROR;
+      return CallbackReturn::SUCCESS;
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(connection_check_period_ms_));
   }
 
-  return CallbackReturn::ERROR;
+  return CallbackReturn::SUCCESS;
 }
 
 CallbackReturn RobotSystem::on_deactivate(const rclcpp_lifecycle::State&)

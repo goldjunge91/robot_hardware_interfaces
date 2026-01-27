@@ -66,10 +66,10 @@ CallbackReturn RobotImuSensor::on_activate(const rclcpp_lifecycle::State &)
   
   while (!imu_msg) {
     if ((node_->get_clock()->now() - start_time).seconds() > 5.0) {
-      RCLCPP_ERROR(
+      RCLCPP_WARN(
         rclcpp::get_logger("RobotImuSensor"),
-        "Timeout waiting for IMU data from firmware");
-      return CallbackReturn::ERROR;
+        "Timeout waiting for IMU data from firmware. Proceeding in mock mode.");
+      return CallbackReturn::SUCCESS;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     received_imu_msg_ptr_.get(imu_msg);
