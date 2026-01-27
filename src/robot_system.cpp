@@ -296,12 +296,12 @@ return_type RobotSystem::read(const rclcpp::Time&, const rclcpp::Duration&)
 
   RCLCPP_DEBUG(rclcpp::get_logger("RobotSystem"), "Reading motors state");
 
-  // No mock mode - return ERROR if no data received from firmware
+  // Mock mode / Robustness: Warn but don't fail if no data received
   if (!motor_state)
   {
-    RCLCPP_ERROR_THROTTLE(rclcpp::get_logger("RobotSystem"), *node_->get_clock(), 1000,
-                          "No joint states received from firmware");
-    return return_type::ERROR;
+    RCLCPP_WARN_THROTTLE(rclcpp::get_logger("RobotSystem"), *node_->get_clock(), 5000,
+                          "No joint states received from firmware. Assuming Mock Mode/Disconnected.");
+    return return_type::OK;
   }
 
   // Verify and map joint names from firmware
